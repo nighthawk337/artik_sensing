@@ -12,7 +12,7 @@ def main(argv):
 	DEFAULT_CONFIG_PATH = 'config/config.json'
 
 	with open(DEFAULT_CONFIG_PATH, 'r') as config_file:
-		config = json.load(config_file)['sampleFireSensor']
+		config = json.load(config_file)['temperatureSensor']
 	print(config)
 
 	# Configure Oauth2 access_token for the client application.  Here we have used
