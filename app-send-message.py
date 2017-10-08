@@ -5,7 +5,8 @@ import time, random, json
 from pprint import pprint
 from DHT11_Python import dht11
 import RPi.GPIO as GPIO
-import Adafruit_BMP.BMP085 as BMP085
+#import Adafruit_BMP.BMP085 as BMP085
+import Adafruit_ADS1x15
 import datetime
 
 def send_message(api_instance, device_message, device_sdid):
@@ -31,7 +32,25 @@ def main(argv):
     GPIO.setwarnings(False)                                                                   
     GPIO.setmode(GPIO.BCM)
     GPIO.cleanup()
-    # read data using pin 14                                                                  
+    # read data using pin 14
+
+    # Initialize the ADS1115 ADC (16-bit) instance
+    adc = Adafruit_ADS1x15.ADS1115()
+
+    # Note you can change the I2C address from its default (0x48), and/or the I2C
+    # bus by passing in these optional parameters:
+    #adc = Adafruit_ADS1x15.ADS1015(address=0x49, busnum=1)
+
+    # Choose a gain of 1 for reading voltages from 0 to 4.09V.
+    # Or pick a different gain to change the range of voltages that are read:
+    #  - 2/3 = +/-6.144V
+    #  -   1 = +/-4.096V
+    #  -   2 = +/-2.048V
+    #  -   4 = +/-1.024V
+    #  -   8 = +/-0.512V
+    #  -  16 = +/-0.256V
+    # See table 3 in the ADS1015/ADS1115 datasheet for more info on gain.
+    GAIN = 1                                                                  
 
     instance = dht11.DHT11(pin=17)
  
@@ -78,14 +97,19 @@ def main(argv):
        device_message['humidity'] = humidity
        send_message(api_instance, device_message, device_sdid)
 
-    sensor = BMP085.BMP085()
-    pressure = sensor.read_pressure()
-    print('Pressure = {0:0.2f} Pa'.format(pressure))
+    #sensor = BMP085.BMP085()
+    #pressure = sensor.read_pressure()
+    #print('Pressure = {0:0.2f} Pa'.format(pressure))
+    air_qa_value = adc.read_adc(0, gain=GAIN)
+    print ("Air quality: %f " % air_qa_value)    
 
-    if (pressure > 0):
-       device_message = {}
-       device_message['pressure'] = pressure
-       send_message(api_instance, device_message, device_sdid)
+    if (air_qa_value > 0):
+        device_message = {}
+        device_message['air_quality'] = air_qa_value
+    #if (pressure > 0):
+    #   device_message = {}
+    #   device_message['pressure'] = pressure
+        send_message(api_instance, device_message, device_sdid)
 
         
 if __name__ == "__main__":
