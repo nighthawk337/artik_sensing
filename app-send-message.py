@@ -8,6 +8,7 @@ import RPi.GPIO as GPIO
 #import Adafruit_BMP.BMP085 as BMP085
 import Adafruit_ADS1x15
 import datetime
+import sqlite3
 
 def send_message(api_instance, device_message, device_sdid):
    
@@ -27,6 +28,29 @@ def send_message(api_instance, device_message, device_sdid):
 # SDK reference for more details
 # https://github.com/artikcloud/artikcloud-python
 def main(argv):
+
+    table_name = 'envtable'
+    dt_col = 'date_time'
+    temp_col = 'temp'
+    humidity_col = 'humidity'
+    air_pollution_col = 'air_pollution'
+    
+    try:
+      # Create a database
+      db = sqlite3.connect('data/envdb')
+    
+      # Get a cursor object
+      cursor = db.cursor()
+      cursor.execute('CREATE TABLE IF NOT EXISTS \
+                      {tn} ({dt} datetime, {t} REAL, {h} REAL, {a} REAL)'\
+                      .format(tn=table_name, dt=dt_col, t=temp_col, h=humidity_col, a=air_pollution_col))
+      db.commit()
+    except Exception as e:
+      db.rollback()
+      print('Failed to open or create table')
+      raise e
+    #finally:
+      #db.close()
 
     # initialize GPIO                                                                        
     GPIO.setwarnings(False)                                                                   
@@ -79,11 +103,13 @@ def main(argv):
     result = instance.read()
         
     humidity = 0
+    temp_value = 0
     if result.is_valid():
-       device_message['temp'] = (result.temperature*1.8 + 32)
+       temp_value = result.temperature*1.8 + 32
+       device_message['temp'] = temp_value
        humidity = result.humidity
        print("Last valid input: " + str(datetime.datetime.now()))
-       print("Temperature: %d F" % (result.temperature*1.8 + 32))
+       print("Temperature: %d F" % temp_value)
        print("Humidity: %d %%" % result.humidity)
 
     time.sleep(1)
@@ -110,6 +136,11 @@ def main(argv):
     #   device_message = {}
     #   device_message['pressure'] = pressure
         send_message(api_instance, device_message, device_sdid)
+    
+    db.execute("INSERT INTO {tn}  VALUES ((CURRENT_TIMESTAMP), {t}, {h},{a})"\
+         .format(tn=table_name, t = temp_value, h = humidity, a =air_qa_value))
+    db.commit()
+    db.close()
 
         
 if __name__ == "__main__":
